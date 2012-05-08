@@ -1,0 +1,22 @@
+
+VERILOG_FILES = \
+	mpx_alu.v \
+	mpx_defs.v \
+	mpx_funcs.v \
+	mpx_regfile_sim.v \
+	mpx_soc_defs.v \
+	mpx_soc.v \
+	mpx_top.v \
+	mpx.v \
+	sram4.v \
+	sram.v \
+	uart.v
+
+obj_dir/Vmpx_top : vmain.cpp $(VERILOG_FILES)
+	verilator --cc mpx_top.v --exe vmain.cpp --trace --trace-underscore 
+	make -C obj_dir/ -f Vmpx_top.mk
+
+clean :
+	rm -rf obj_dir
+	rm -f test.vcd
+
