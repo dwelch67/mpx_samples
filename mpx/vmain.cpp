@@ -212,6 +212,12 @@ int mpx_test_run(int cycles)
 
         if (_stop_pc == top->dbg_pc_o)
             break;
+
+        if(top->soft_halt_sim_o)
+        {
+            printf("stopping simulation\n");
+            break;
+        }
     }
 
     // Fault

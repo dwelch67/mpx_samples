@@ -40,6 +40,7 @@ clean :
 	rm -f *.bc
 	rm -f *.norm.s
 	rm -f *.opt.s
+	rm -f test.vcd
 
 
 startup.o : startup.s

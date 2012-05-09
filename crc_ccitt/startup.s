@@ -11,7 +11,11 @@ _start:
     jal notmain
     li $18,3
 
-    .word 0x00000002
+    /* halt the sim */
+    lui $4,0x2000
+    addiu $4,0xF0
+    li $5,0
+    sw $5,0($4)
 
 hang:
     j hang
