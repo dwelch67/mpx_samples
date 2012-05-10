@@ -1,0 +1,35 @@
+
+Below are a modified version of the mpx instructions written by the
+mpx author.  I have modified the script to only build binutils and gcc,
+I didnt have a use for the other items.  You might.  Grab the build_gcc.zip
+file from the opencores project page to get the complete script and
+build everything if you want/need it.
+
+I have also attempted, perhaps successfully, dont know, to take the
+mods to gcc 4.6.1 and apply them to 4.7.0.  It built gcc for me and
+that gcc built the examples, but I dont use divide so maybe I didnt
+expose the changes other than the command line options.
+
+
+dwelch
+
+Instructions
+------------
+
+Choose a destination directory, for example /usr/local/mips-elf
+
+sudo mkdir /usr/local/mips-elf
+sudo ./build_gcc /usr/local/mips-elf
+
+
+Details
+-------
+The script will fetch binutil 2.21.1 & GCC 4.7.0 from the web, then apply the GCC patches.
+The build will result in GCC executables for mips-elf which support the following new flags:
+
+- mnohwmult          - Disable mult/multu instructions (use software multiplication instead).
+- mnohwdiv           - Disable div/divu instructions (use software division instead).
+- mpatfree           - Disable use of formally patented lwl/lwr/swl/swr instructions (unaligned access instructions).
+
+
+--------

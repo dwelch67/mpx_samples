@@ -1,0 +1,52 @@
+
+# Usage
+# sudo ./build_gcc /usr/local/mips-elf
+
+# Setup vars 
+export TARGET=mips-elf
+export PREFIX=$1
+export PATH=$PATH:$PREFIX/bin
+
+rm -rf binutils-2.21.1*
+rm -rf gcc-4.6.1*
+rm -rf gcc-4.7.0*
+rm -rf build-*
+
+# Get archives
+wget http://ftp.gnu.org/gnu/binutils/binutils-2.21.1.tar.bz2
+#wget http://ftp.gnu.org/gnu/gcc/gcc-4.6.1/gcc-4.6.1.tar.bz2
+wget http://ftp.gnu.org/gnu/gcc/gcc-4.7.0/gcc-4.7.0.tar.bz2
+
+# Extract archives
+bzip2 -dc binutils-2.21.1.tar.bz2 | tar -xf -
+#bzip2 -dc gcc-4.6.1.tar.bz2 | tar -xf -
+bzip2 -dc gcc-4.7.0.tar.bz2 | tar -xf -
+
+# Apply patches
+#cp patches_gcc-4.6.1/* gcc-4.6.1/gcc/config/mips/
+cp patches_gcc-4.6.1/* gcc-4.7.0/gcc/config/mips/
+
+# Build binutils
+mkdir build-binutils
+cd build-binutils
+../binutils-2.21.1/configure --target=$TARGET --prefix=$PREFIX
+make all
+make install
+
+## Build GCC
+#mkdir ../build-gcc
+#cd ../build-gcc
+#../gcc-4.6.1/configure --target=$TARGET --prefix=$PREFIX --without-headers --with-gnu-as --with-gnu-ld --disable-libssp --disable-libc --disable-libgcc
+#make all-gcc
+#make install-gcc
+
+mkdir ../build-gcc470
+cd ../build-gcc470
+../gcc-4.7.0/configure --target=$TARGET --prefix=$PREFIX --without-headers --with-gnu-as --with-gnu-ld --disable-libssp --disable-libc --disable-libgcc
+make all-gcc
+make install-gcc
+
+
+
+
+
