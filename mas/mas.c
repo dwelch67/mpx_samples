@@ -252,6 +252,19 @@ unsigned int parse_three_regs ( unsigned int ra )
     return(ra);
 }
 //-------------------------------------------------------------------
+unsigned int parse_three_shift ( unsigned int ra )
+{
+    ra=parse_reg(ra); if(ra==0) return(0);
+    rd=rx;
+    ra=parse_comma(ra); if(ra==0) return(0);
+    ra=parse_reg(ra); if(ra==0) return(0);
+    rt=rx;
+    ra=parse_comma(ra); if(ra==0) return(0);
+    ra=parse_reg(ra); if(ra==0) return(0);
+    rs=rx;
+    return(ra);
+}
+//-------------------------------------------------------------------
 unsigned int parse_two_immed ( unsigned int ra )
 {
     ra=parse_reg(ra); if(ra==0) return(0);
@@ -262,6 +275,19 @@ unsigned int parse_two_immed ( unsigned int ra )
     ra=parse_comma(ra); if(ra==0) return(0);
     ra=parse_immed(ra); if(ra==0) return(0);
     rd=rx;
+    return(ra);
+}
+//-------------------------------------------------------------------
+unsigned int parse_two_shift ( unsigned int ra )
+{
+    ra=parse_reg(ra); if(ra==0) return(0);
+    rd=rx;
+    ra=parse_comma(ra); if(ra==0) return(0);
+    ra=parse_reg(ra); if(ra==0) return(0);
+    rt=rx;
+    ra=parse_comma(ra); if(ra==0) return(0);
+    ra=parse_immed(ra); if(ra==0) return(0);
+    rs=rx;
     return(ra);
 }
 //-------------------------------------------------------------------
@@ -446,8 +472,6 @@ int assemble ( void )
             if(rest_of_line(ra)) return(1);
             continue;
         }
-
-
 // add -----------------------------------------------------------
         if(strncmp(&newline[ra],"add ",4)==0)
         {
@@ -526,7 +550,8 @@ int assemble ( void )
             ra+=4;
             //beq $t,$s,offset/label
             ra=parse_two_label(ra); if(ra==0) return(1);
-            mem[curradd]=(0x10<<24)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            //            0001 00ss
+            mem[curradd]=(0x04<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -538,7 +563,8 @@ int assemble ( void )
             ra+=5;
             //bgez $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
-            mem[curradd]=(0x04<<24)|(rs<<21)|(0x01<<16)|(rd&0xFFFF);
+            //            0000 01ss
+            mem[curradd]=(0x01<<26)|(rs<<21)|(0x01<<16)|(rd&0xFFFF);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -550,7 +576,8 @@ int assemble ( void )
             ra+=7;
             //bgezal $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
-            mem[curradd]=(0x04<<24)|(rs<<21)|(0x11<<16)|(rd&0xFFFF);
+            //            0000 01ss
+            mem[curradd]=(0x01<<26)|(rs<<21)|(0x11<<16)|(rd&0xFFFF);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -562,7 +589,8 @@ int assemble ( void )
             ra+=5;
             //bgtz $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
-            mem[curradd]=(0x1C<<24)|(rs<<21)|(0x00<<16)|(rd&0xFFFF);
+            //            0001 11ss
+            mem[curradd]=(0x7<<26)|(rs<<21)|(0x00<<16)|(rd&0xFFFF);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -574,7 +602,8 @@ int assemble ( void )
             ra+=5;
             //blez $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
-            mem[curradd]=(0x18<<24)|(rs<<21)|(0x00<<16)|(rd&0xFFFF);
+            //            0001 10ss
+            mem[curradd]=(0x6<<26)|(rs<<21)|(0x00<<16)|(rd&0xFFFF);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -586,7 +615,8 @@ int assemble ( void )
             ra+=5;
             //bltz $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
-            mem[curradd]=(0x04<<24)|(rs<<21)|(0x00<<16)|(rd&0xFFFF);
+            //            0000 01ss
+            mem[curradd]=(0x01<<26)|(rs<<21)|(0x00<<16)|(rd&0xFFFF);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -598,7 +628,8 @@ int assemble ( void )
             ra+=7;
             //bltzal $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
-            mem[curradd]=(0x04<<24)|(rs<<21)|(0x10<<16)|(rd&0xFFFF);
+            //            0000 01ss
+            mem[curradd]=(0x01<<26)|(rs<<21)|(0x10<<16)|(rd&0xFFFF);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -610,7 +641,8 @@ int assemble ( void )
             ra+=4;
             //bne $t,$s,offset/label
             ra=parse_two_label(ra); if(ra==0) return(1);
-            mem[curradd]=(0x14<<24)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            //            0001 01ss
+            mem[curradd]=(0x5<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -640,7 +672,8 @@ int assemble ( void )
                 printf("<%u> Error: warning constant too big\n",line);
                 return(1);
             }
-            mem[curradd]=(0x08<<24)|(rt>>2);
+            //            0000 10tt
+            mem[curradd]=(0x02<<26)|(rt>>2);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -660,7 +693,8 @@ int assemble ( void )
                 printf("<%u> Error: warning constant too big\n",line);
                 return(1);
             }
-            mem[curradd]=(0x0C<<24)|(rt>>2);
+            //            0000 11tt
+            mem[curradd]=(0x03<<26)|(rt>>2);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -679,22 +713,6 @@ int assemble ( void )
             if(rest_of_line(ra)) return(1);
             continue;
         }
-// li -----------------------------------------------------------
-        if(strncmp(&newline[ra],"li ",3)==0)
-        {
-            ra+=3;
-            //li $t,imm -> addiu $t,$0,imm
-            ra=parse_reg(ra); if(ra==0) return(1);
-            rt=rx;
-            ra=parse_comma(ra); if(ra==0) return(0);
-            ra=parse_immed(ra); if(ra==0) return(1);
-            printf("li $t,imm is an alias for addiu $t,$0,imm\n");
-            mem[curradd]=(0x09<<26)|(0<<21)|(rt<<16)|(rx&0xFFFF);
-            mark[curradd]|=0x80000000;
-            curradd++;
-            if(rest_of_line(ra)) return(1);
-            continue;
-        }
 // lui -----------------------------------------------------------
         if(strncmp(&newline[ra],"lui ",4)==0)
         {
@@ -704,7 +722,8 @@ int assemble ( void )
             rt=rx;
             ra=parse_comma(ra); if(ra==0) return(0);
             ra=parse_immed(ra); if(ra==0) return(1);
-            mem[curradd]=(0x3C<<24)|(rt<<16)|(rx&0xFFFF);
+            //            001111-----
+            mem[curradd]=(0x0F<<26)|(rt<<16)|(rx&0xFFFF);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -721,17 +740,20 @@ int assemble ( void )
             if(is_label)
             {
                 printf("<%u> adding instruction\n",line);
-                mem[curradd]=(0x3C<<24)|(rt<<16)|(0x0000);
+                //            0011 11tt
+                mem[curradd]=(0x0F<<26)|(rt<<16)|(0x0000);
                 mark[curradd]|=0x80000000;
                 curradd++;
-                mem[curradd]=(0x8C<<24)|(rt<<21)|(rt<<16)|(0x0000);
+                //            1000 11ss
+                mem[curradd]=(0x23<<26)|(rt<<21)|(rt<<16)|(0x0000);
                 mark[curradd]|=0x80000000;
                 curradd++;
                 continue;
             }
             if(is_const)
             {
-                mem[curradd]=(0x8C<<24)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+                //            1000 11ss
+                mem[curradd]=(0x23<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
                 mark[curradd]|=0x80000000;
                 curradd++;
                 continue;
@@ -757,17 +779,6 @@ int assemble ( void )
         {
             printf("div/mult/mfhi/mflo not supported\n");
         }
-// noop -----------------------------------------------------------
-        if(strncmp(&newline[ra],"noop",4)==0)
-        {
-            ra+=4;
-            //noop
-            mem[curradd]=0x00000000;
-            mark[curradd]|=0x80000000;
-            curradd++;
-            if(rest_of_line(ra)) return(1);
-            continue;
-        }
 // or -----------------------------------------------------------
         if(strncmp(&newline[ra],"or ",3)==0)
         {
@@ -792,12 +803,24 @@ int assemble ( void )
             if(rest_of_line(ra)) return(1);
             continue;
         }
+// sll -----------------------------------------------------------
+        if(strncmp(&newline[ra],"sll ",4)==0)
+        {
+            ra+=4;
+            //sll $d,$t,shamt
+            ra=parse_two_shift(ra); if(ra==0) return(1);
+            mem[curradd]=(0x00<<26)|(0<<21)|(rt<<16)|(rd<<11)|((rs&0x1F)<<6)|(0x00);
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
 // sllv -----------------------------------------------------------
         if(strncmp(&newline[ra],"sllv ",5)==0)
         {
             ra+=5;
-            //sllv $d,$s,$t  actually $d,$t,$s
-            ra=parse_three_regs(ra); if(ra==0) return(1);
+            //sllv $d,$t,$s
+            ra=parse_three_shift(ra); if(ra==0) return(1);
             mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x04);
             mark[curradd]|=0x80000000;
             curradd++;
@@ -846,7 +869,43 @@ int assemble ( void )
             ra+=5;
             //sltu $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x2B);
+            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x02B);
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// sra -----------------------------------------------------------
+        if(strncmp(&newline[ra],"sra ",4)==0)
+        {
+            ra+=4;
+            //sra $d,$t,shamt
+            ra=parse_two_shift(ra); if(ra==0) return(1);
+            mem[curradd]=(0x00<<26)|(0<<21)|(rt<<16)|(rd<<11)|((rs&0x1F)<<6)|(0x03);
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// srav -----------------------------------------------------------
+        if(strncmp(&newline[ra],"srav ",5)==0)
+        {
+            ra+=5;
+            //srav $d,$t,$s
+            ra=parse_three_shift(ra); if(ra==0) return(1);
+            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x07);
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// srl -----------------------------------------------------------
+        if(strncmp(&newline[ra],"srl ",4)==0)
+        {
+            ra+=4;
+            //srl $d,$t,shamt
+            ra=parse_two_shift(ra); if(ra==0) return(1);
+            mem[curradd]=(0x00<<26)|(0<<21)|(rt<<16)|(rd<<11)|((rs&0x1F)<<6)|(0x02);
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -856,8 +915,8 @@ int assemble ( void )
         if(strncmp(&newline[ra],"srlv ",5)==0)
         {
             ra+=5;
-            //srlv $d,$s,$t actually $d,$t,$s
-            ra=parse_three_regs(ra); if(ra==0) return(1);
+            //srlv $d,$t,$s
+            ra=parse_three_shift(ra); if(ra==0) return(1);
             mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x06);
             mark[curradd]|=0x80000000;
             curradd++;
@@ -899,17 +958,20 @@ int assemble ( void )
             if(is_label)
             {
                 printf("<%u> adding instruction\n",line);
-                mem[curradd]=(0x3C<<24)|(rt<<16)|(0x0000);
+                //            0011 11ss
+                mem[curradd]=(0x0F<<26)|(rt<<16)|(0x0000);
                 mark[curradd]|=0x80000000;
                 curradd++;
-                mem[curradd]=(0xAC<<24)|(rt<<21)|(rt<<16)|(0x0000);
+                //            1010 11ss
+                mem[curradd]=(0x2B<<26)|(rt<<21)|(rt<<16)|(0x0000);
                 mark[curradd]|=0x80000000;
                 curradd++;
                 continue;
             }
             if(is_const)
             {
-                mem[curradd]=(0xAC<<24)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+                //            1010 11ss
+                mem[curradd]=(0x2B<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
                 mark[curradd]|=0x80000000;
                 curradd++;
                 continue;
@@ -939,11 +1001,123 @@ int assemble ( void )
             if(rest_of_line(ra)) return(1);
             continue;
         }
-
-
-
-
-
+//-------------------------------------------------------------------
+// pseudo instructions
+//-------------------------------------------------------------------
+// b -----------------------------------------------------------
+        if(strncmp(&newline[ra],"b ",2)==0)
+        {
+            ra+=2;
+            //b label
+            //b 0x1234
+            //b 123
+            printf("<%u> b label, is an alias for beq $0,$0,label\n",line);
+            ra=parse_branch_label(ra); if(ra==0) return(1);
+            //            0001 00ss beq
+            mem[curradd]=(0x04<<26)|(0<<21)|(0<<16)|(rx&0xFFFF);
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// bal -----------------------------------------------------------
+        if(strncmp(&newline[ra],"bal ",4)==0)
+        {
+            ra+=4;
+            //bal label
+            //bal 0x1234
+            //bal 123
+            printf("<%u> bal label, is an alias for bgezal $0,label\n",line);
+            ra=parse_branch_label(ra); if(ra==0) return(1);
+            //            0000 01ss bgezal
+            mem[curradd]=(0x01<<26)|(0<<21)|(0x11<<16)|(rx&0xFFFF);
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// la -----------------------------------------------------------
+        if(strncmp(&newline[ra],"la ",3)==0)
+        {
+            ra+=3;
+            //la $t,label
+            ra=parse_reg(ra); if(ra==0) return(1);
+            rt=rx;
+            ra=parse_comma(ra); if(ra==0) return(0);
+            ra=parse_branch_label(ra); if(ra==0) return(1);
+            if(rest_of_line(ra)) return(1);
+            if(is_label)
+            {
+                printf("<%u> la $t,label is an alias for lui $t,address[31:16]; ori $t,$t,address[15:0]\n",line);
+                printf("<%u> adding an instruction\n",line);
+                //           0011 11ss
+                mem[curradd]=(0x0F<<26)|(0<<21)|(rt<<16)|((rx>>16)&0xFFFF);
+                mark[curradd]|=0x80000000;
+                curradd++;
+                //           0011 01ss
+                mem[curradd]=(0x0D<<26)|(rt<<21)|(rt<<16)|(rx&0xFFFF);
+                mark[curradd]|=0x80000000;
+                curradd++;
+                continue;
+            }
+        }
+// li -----------------------------------------------------------
+        if(strncmp(&newline[ra],"li ",3)==0)
+        {
+            ra+=3;
+            //li $t,imm
+            ra=parse_reg(ra); if(ra==0) return(1);
+            rt=rx;
+            ra=parse_comma(ra); if(ra==0) return(0);
+            ra=parse_immed(ra); if(ra==0) return(1);
+            if(rx&0xFFFF0000)
+            {
+                printf("<%u> li $t,imm is an alias for lui $t,imm[31:16]; ori $t,$t,imm[15:0]\n",line);
+                printf("<%u> adding an instruction\n",line);
+                //           0011 11ss
+                mem[curradd]=(0x0F<<26)|(0<<21)|(rt<<16)|((rx>>16)&0xFFFF);
+                mark[curradd]|=0x80000000;
+                curradd++;
+                //           0011 01ss
+                mem[curradd]=(0x0D<<26)|(rt<<21)|(rt<<16)|(rx&0xFFFF);
+                mark[curradd]|=0x80000000;
+                curradd++;
+            }
+            else
+            {
+                printf("<%u> li $t,imm is an alias for ori $t,$0,imm[15:0]\n",line);
+                //           0011 01ss
+                mem[curradd]=(0x0D<<26)|(0<<21)|(rt<<16)|(rx&0xFFFF);
+                mark[curradd]|=0x80000000;
+                curradd++;
+            }
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// noop -----------------------------------------------------------
+        if(strncmp(&newline[ra],"noop",4)==0)
+        {
+            ra+=4;
+            //noop
+            printf("<%u> noop is a pseudo instruction for sll $0,$0,0\n",line);
+            mem[curradd]=0x00000000;
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// nop -----------------------------------------------------------
+        if(strncmp(&newline[ra],"nop",3)==0)
+        {
+            ra+=3;
+            //nop
+            printf("<%u> nop is a pseudo instruction for sll $0,$0,0\n",line);
+            mem[curradd]=0x00000000;
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
 // -----------------------------------------------------------
         printf("<%u> Error: syntax error\n",line);
         return(1);
@@ -1047,6 +1221,14 @@ int main ( int argc, char *argv[] )
                         if((inst2&0xFC000000)==0xAC000000)
                         {
                             //lui + sw
+                            inst|=(rx>>16)&0xFFFF;
+                            inst2|=(rx>>0)&0xFFFF;
+                            mem[lab_struct[ra].addr+1]=inst2;
+                            lab_struct[ra].type++;
+                        }
+                        if((inst2&0xFC000000)==0x34000000)
+                        {
+                            //lui + ori
                             inst|=(rx>>16)&0xFFFF;
                             inst2|=(rx>>0)&0xFFFF;
                             mem[lab_struct[ra].addr+1]=inst2;

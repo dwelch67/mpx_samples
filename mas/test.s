@@ -41,5 +41,7 @@ there: .word 0x12345678
     noop
     noop
 
+    la $5,over
+
 forever:
-    beq $0,$0,forever
+    b forever

@@ -1,5 +1,13 @@
 
-This is a work in progress, still a ways to go.
+This is still very new, and barely debugged.
 
-This will be a standalone mips assembler, no frills, educational purposes,
-should compile almost anywhere.
+This is a standalone mips assembler (mas), intentionally targeted to the
+instruction set supported by the mpx processor found at opencores.
+
+This is intended to be portable enough to compile almost anywhere without
+a pile of libraries (the C compiler and C library is all you need).  So
+if you want to just try mips assembly language and for whatever reason
+cannot or wont get and build binutils.  Or just want a simple, no frills
+assembler, mas should work for you.
+
+TODO, mips assembly language tutorials.
