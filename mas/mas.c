@@ -1099,7 +1099,7 @@ int assemble ( void )
         {
             ra+=4;
             //noop
-            printf("<%u> noop is a pseudo instruction for sll $0,$0,0\n",line);
+            //printf("<%u> noop is a pseudo instruction for sll $0,$0,0\n",line);
             mem[curradd]=0x00000000;
             mark[curradd]|=0x80000000;
             curradd++;
@@ -1111,7 +1111,7 @@ int assemble ( void )
         {
             ra+=3;
             //nop
-            printf("<%u> nop is a pseudo instruction for sll $0,$0,0\n",line);
+            //printf("<%u> nop is a pseudo instruction for sll $0,$0,0\n",line);
             mem[curradd]=0x00000000;
             mark[curradd]|=0x80000000;
             curradd++;

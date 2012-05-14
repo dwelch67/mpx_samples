@@ -1,4 +1,8 @@
 
+    lui $9,0x1234
+
+    lui $10,0x2000
+    sw $9,0x00E0($10)
 
     li $9,0
     lui $10,0
@@ -45,3 +49,19 @@ there: .word 0x12345678
 
 forever:
     b forever
+
+
+lui $10,0x1234
+lui $4,0x2000
+sw $10,0x00E0($4)
+
+;---- end sim ---
+lui $4,0x2000
+nop
+nop
+nop
+nop
+nop
+sw $0,0x00F0($4)
+beq $0,$0,0xFFFF
+nop
