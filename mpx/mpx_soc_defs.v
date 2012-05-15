@@ -68,4 +68,5 @@
 
 `define SYS_CLK_COUNT           8'h60
 
+`define SIM_SHOW_WORD           8'hE0
 `define SOFT_HALT_SIM           8'hF0

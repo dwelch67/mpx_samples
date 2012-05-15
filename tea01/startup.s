@@ -3,19 +3,12 @@
 
 .globl _start
 _start:
-
-    li $16,1
-    li $17,2
-
     li $sp,0x10000
     jal notmain
     li $18,3
 
     /* halt the sim */
-    lui $4,0x2000
-    addiu $4,0xF0
-    li $5,0
-    sw $5,0($4)
+    .word 0x000000FF
 
 hang:
     j hang

@@ -83,8 +83,8 @@ module mpx_soc
     dbg_uart_data_o,
     dbg_uart_wr_o,
 
-    // software halt sim
-    soft_halt_sim_o
+    sim_show_word_o,
+    sim_show_word_wr_o
 );
 
 //-----------------------------------------------------------------
@@ -123,7 +123,8 @@ output [31:0]       dbg_reg_out_o /*verilator public*/;
 output [31:0]       dbg_pc_o /*verilator public*/;
 output [7:0]        dbg_uart_data_o /*verilator public*/;
 output              dbg_uart_wr_o /*verilator public*/;
-output              soft_halt_sim_o /*verilator public*/;
+output [31:0]       sim_show_word_o /*verilator public*/;
+output              sim_show_word_wr_o /*verilator public*/;
 
 //-----------------------------------------------------------------
 // Registers
@@ -176,7 +177,8 @@ reg [31:0]          ext_io_addr_o;
 reg [31:0]          ext_io_data_o;
 reg [3:0]           ext_io_wr_o;
 reg                 ext_io_rd_o;
-wire                soft_halt_sim_o;
+wire [31:0]         sim_show_word_o;
+wire                sim_show_word_wr_o;
 
 
 //-----------------------------------------------------------------
@@ -233,7 +235,8 @@ u3_uart
 always @ (posedge rst_i or posedge clk_i )
 begin
 
-   soft_halt_sim_o = 0;
+   sim_show_word_o = 32'b0;
+   sim_show_word_wr_o = 1'b0;
 
    if (rst_i == 1'b1)
    begin
@@ -307,8 +310,11 @@ begin
            `SYS_CLK_COUNT :
                 hr_timer_match <= io_data_w;
 
-            `SOFT_HALT_SIM :
-                soft_halt_sim_o = 1;
+            `SIM_SHOW_WORD :
+            begin
+                sim_show_word_wr_o = 1'b1;
+                sim_show_word_o = io_data_w;
+            end
 
            default :
                ;

@@ -59,8 +59,9 @@ module mpx_top
     // UART output
     uart_data_o,
     uart_wr_o,
-    // stop sim
-    soft_halt_sim_o
+
+    sim_show_word_o,
+    sim_show_word_wr_o
 );
 
 //-----------------------------------------------------------------
@@ -82,7 +83,8 @@ output [31:0]       dbg_reg_out_o /*verilator public*/;
 output [31:0]       dbg_pc_o /*verilator public*/;
 output [7:0]        uart_data_o /*verilator public*/;
 output              uart_wr_o /*verilator public*/;
-output              soft_halt_sim_o /*verilator public*/;
+output [31:0]       sim_show_word_o /*verilator public*/;
+output              sim_show_word_wr_o /*verilator public*/;
 
 //-----------------------------------------------------------------
 // Registers / Wires
@@ -96,7 +98,8 @@ wire [31:0]         int_mem_addr_o;
 wire [31:0]         int_mem_data_o;
 wire [31:0]         int_mem_data_i;
 wire [3:0]          int_mem_wr_o;
-wire                soft_halt_sim_o;
+wire [31:0]         sim_show_word_o;
+wire                sim_show_word_wr_o;
 
 //-----------------------------------------------------------------
 // Instantiation
@@ -161,7 +164,8 @@ u1_cpu
     .dbg_uart_data_o(uart_data_o),
     .dbg_uart_wr_o(uart_wr_o),
 
-    .soft_halt_sim_o(soft_halt_sim_o)
+    .sim_show_word_o(sim_show_word_o),
+    .sim_show_word_wr_o(sim_show_word_wr_o)
 );
 
 endmodule

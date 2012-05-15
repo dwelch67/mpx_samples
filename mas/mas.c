@@ -574,9 +574,9 @@ int assemble ( void )
             continue;
         }
 // break -----------------------------------------------------------
-        if(strncmp(&newline[ra],"break ",6)==0)
+        if(strncmp(&newline[ra],"break",5)==0)
         {
-            ra+=6;
+            ra+=5;
             //break
             mem[curradd]=rtype_inst(0,0,0,0,0x0D); //BREAK
             mark[curradd]|=0x80000000;
@@ -1078,9 +1078,9 @@ int assemble ( void )
             }
         }
 // syscall -----------------------------------------------------------
-        if(strncmp(&newline[ra],"syscall ",8)==0)
+        if(strncmp(&newline[ra],"syscall",7)==0)
         {
-            ra+=8;
+            ra+=7;
             //syscall
             mem[curradd]=rtype_inst(0,0,0,0,0x0C); //SYSCALL
             mark[curradd]|=0x80000000;

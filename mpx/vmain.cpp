@@ -204,6 +204,10 @@ int mpx_test_run(int cycles)
         if (top->uart_wr_o)
             printf("%c", top->uart_data_o);
 
+
+        if (top->sim_show_word_wr_o) printf("show 0x%08X\n",top->sim_show_word_o);
+
+
         if (last_pc != top->dbg_pc_o)
         {
             last_pc = top->dbg_pc_o;
@@ -213,11 +217,6 @@ int mpx_test_run(int cycles)
         if (_stop_pc == top->dbg_pc_o)
             break;
 
-        if(top->soft_halt_sim_o)
-        {
-            printf("stopping simulation\n");
-            break;
-        }
     }
 
     // Fault
