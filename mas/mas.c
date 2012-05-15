@@ -11,7 +11,7 @@
 FILE *fpin;
 FILE *fpout;
 
-unsigned int rd,rs,rt,rx;
+unsigned int rd,rs,rt,rx,rshift,immed;
 unsigned int is_const,is_label;
 
 #define ADDMASK 0xFFFF
@@ -275,6 +275,7 @@ unsigned int parse_two_immed ( unsigned int ra )
     ra=parse_comma(ra); if(ra==0) return(0);
     ra=parse_immed(ra); if(ra==0) return(0);
     rd=rx;
+    immed=rx;
     return(ra);
 }
 //-------------------------------------------------------------------
@@ -288,6 +289,7 @@ unsigned int parse_two_shift ( unsigned int ra )
     ra=parse_comma(ra); if(ra==0) return(0);
     ra=parse_immed(ra); if(ra==0) return(0);
     rs=rx;
+    rshift=rx;
     return(ra);
 }
 //-------------------------------------------------------------------
@@ -377,6 +379,17 @@ unsigned int parse_load_store ( unsigned int ra )
         ra=parse_par_close(ra); if(ra==0) return(0);
     }
     return(ra);
+}
+//-------------------------------------------------------------------
+unsigned int rtype_inst (unsigned int rs, unsigned int rt, unsigned int rd, unsigned int shift, unsigned int function )
+{
+    return((0x00<<26)|((rs&0x1F)<<21)|((rt&0x1F)<<16)|((shift&0x1F)<<6)|(function&0x3F));
+
+}
+//-------------------------------------------------------------------
+unsigned int itype_inst (unsigned int opcode, unsigned int rs, unsigned int rt, unsigned int immed )
+{
+    return((0x00<<26)|((rs&0x1F)<<21)|((rt&0x1F)<<16)|(immed&0xFFFF));
 }
 //-------------------------------------------------------------------
 //-------------------------------------------------------------------
@@ -478,7 +491,7 @@ int assemble ( void )
             ra+=4;
             //add $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x20);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x20); //ADD
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -490,7 +503,7 @@ int assemble ( void )
             ra+=5;
             //addi $t,$s,imm
             ra=parse_two_immed(ra); if(ra==0) return(1);
-            mem[curradd]=(0x08<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x08,rs,rt,immed); //ADDI
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -502,7 +515,7 @@ int assemble ( void )
             ra+=6;
             //addiu $t,$s,imm
             ra=parse_two_immed(ra); if(ra==0) return(1);
-            mem[curradd]=(0x09<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x09,rs,rt,immed); //ADDIU
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -514,7 +527,7 @@ int assemble ( void )
             ra+=5;
             //addu $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x21);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x21); //ADDU
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -526,7 +539,7 @@ int assemble ( void )
             ra+=4;
             //and $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x24);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x24); //AND
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -538,7 +551,18 @@ int assemble ( void )
             ra+=5;
             //andi $t,$s,imm
             ra=parse_two_immed(ra); if(ra==0) return(1);
-            mem[curradd]=(0x0C<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x0C,rs,rt,immed); //ANDI
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// break -----------------------------------------------------------
+        if(strncmp(&newline[ra],"break ",6)==0)
+        {
+            ra+=6;
+            //break
+            mem[curradd]=rtype_inst(0,0,0,0,0x0D); //BREAK
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -551,7 +575,7 @@ int assemble ( void )
             //beq $t,$s,offset/label
             ra=parse_two_label(ra); if(ra==0) return(1);
             //            0001 00ss
-            mem[curradd]=(0x04<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x04,rs,rt,rd); //BEQ
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -564,8 +588,8 @@ int assemble ( void )
             //bgez $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
             //            0000 01ss
-            mem[curradd]=(0x01<<26)|(rs<<21)|(0x01<<16)|(rd&0xFFFF);
-            mark[curradd]|=0x80000000;
+            mem[curradd]=itype_inst(0x01,rs,0x01,rd); //BGEZ
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -577,8 +601,8 @@ int assemble ( void )
             //bgezal $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
             //            0000 01ss
-            mem[curradd]=(0x01<<26)|(rs<<21)|(0x11<<16)|(rd&0xFFFF);
-            mark[curradd]|=0x80000000;
+            mem[curradd]=itype_inst(0x01,rs,0x11,rd); //BGEZAL
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -590,7 +614,7 @@ int assemble ( void )
             //bgtz $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
             //            0001 11ss
-            mem[curradd]=(0x7<<26)|(rs<<21)|(0x00<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x07,rs,0x00,rd); //BGTZ
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -603,7 +627,7 @@ int assemble ( void )
             //blez $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
             //            0001 10ss
-            mem[curradd]=(0x6<<26)|(rs<<21)|(0x00<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x06,rs,0x00,rd); //BLEZ
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -616,8 +640,8 @@ int assemble ( void )
             //bltz $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
             //            0000 01ss
-            mem[curradd]=(0x01<<26)|(rs<<21)|(0x00<<16)|(rd&0xFFFF);
-            mark[curradd]|=0x80000000;
+            mem[curradd]=itype_inst(0x01,rs,0x00,rd); //BLTZ
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -629,8 +653,8 @@ int assemble ( void )
             //bltzal $s,offset/label
             ra=parse_one_label(ra); if(ra==0) return(1);
             //            0000 01ss
-            mem[curradd]=(0x01<<26)|(rs<<21)|(0x10<<16)|(rd&0xFFFF);
-            mark[curradd]|=0x80000000;
+            mem[curradd]=itype_inst(0x01,rs,0x10,rd); //BLTZAL
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -642,7 +666,7 @@ int assemble ( void )
             //bne $t,$s,offset/label
             ra=parse_two_label(ra); if(ra==0) return(1);
             //            0001 01ss
-            mem[curradd]=(0x5<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x05,rs,rt,rd); //BNE
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -707,7 +731,23 @@ int assemble ( void )
             //jr $s
             ra=parse_reg(ra); if(ra==0) return(1);
             rs=rx;
-            mem[curradd]=(0x00<<26)|(rs<<21)|(0x08);
+            mem[curradd]=rtype_inst(rs,0,0,0,0x08); //JR
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// jalr -----------------------------------------------------------
+        if(strncmp(&newline[ra],"jalr ",5)==0)
+        {
+            ra+=5;
+            //jalr $d,$s   $d is normally 31
+            ra=parse_reg(ra); if(ra==0) return(1);
+            rd=rx;
+            ra=parse_comma(ra); if(ra==0) return(1);
+            ra=parse_reg(ra); if(ra==0) return(1);
+            rs=rx;
+            mem[curradd]=rtype_inst(rs,0,rd,0,0x09); //JALR
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -723,7 +763,7 @@ int assemble ( void )
             ra=parse_comma(ra); if(ra==0) return(0);
             ra=parse_immed(ra); if(ra==0) return(1);
             //            001111-----
-            mem[curradd]=(0x0F<<26)|(rt<<16)|(rx&0xFFFF);
+            mem[curradd]=itype_inst(0x0F,0,rt,immed); //LUI
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -741,11 +781,11 @@ int assemble ( void )
             {
                 printf("<%u> adding instruction\n",line);
                 //            0011 11tt
-                mem[curradd]=(0x0F<<26)|(rt<<16)|(0x0000);
-                mark[curradd]|=0x80000000;
+                mem[curradd]=itype_inst(0x0F,0,rt,0x0000); //LUI
+                mark[curradd]|=0x80000001;
                 curradd++;
                 //            1000 11ss
-                mem[curradd]=(0x23<<26)|(rt<<21)|(rt<<16)|(0x0000);
+                mem[curradd]=itype_inst(0x23,rt,rt,0x0000); //LW
                 mark[curradd]|=0x80000000;
                 curradd++;
                 continue;
@@ -753,7 +793,7 @@ int assemble ( void )
             if(is_const)
             {
                 //            1000 11ss
-                mem[curradd]=(0x23<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+                mem[curradd]=itype_inst(0x23,rs,rt,rd); //LW
                 mark[curradd]|=0x80000000;
                 curradd++;
                 continue;
@@ -762,12 +802,54 @@ int assemble ( void )
 // mfhi -----------------------------------------------------------
         if(strncmp(&newline[ra],"mfhi ",5)==0)
         {
-            printf("div/mult/mfhi/mflo not supported\n");
+            ra+=5;
+            //mfhi $d
+            ra=parse_reg(ra); if(ra==0) return(1);
+            rd=rx;
+            mem[curradd]=rtype_inst(0,0,rd,0,0x10); //MFHI
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
         }
 // mflo -----------------------------------------------------------
         if(strncmp(&newline[ra],"mflo ",5)==0)
         {
-            printf("div/mult/mfhi/mflo not supported\n");
+            ra+=5;
+            //mflo $d
+            ra=parse_reg(ra); if(ra==0) return(1);
+            rd=rx;
+            mem[curradd]=rtype_inst(0,0,rd,0,0x12); //MFLO
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// mthi -----------------------------------------------------------
+        if(strncmp(&newline[ra],"mthi ",5)==0)
+        {
+            ra+=5;
+            //mthi $s
+            ra=parse_reg(ra); if(ra==0) return(1);
+            rs=rx;
+            mem[curradd]=rtype_inst(rs,0,0,0,0x11); //MTHI
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
+// mtlo -----------------------------------------------------------
+        if(strncmp(&newline[ra],"mtlo ",5)==0)
+        {
+            ra+=5;
+            //mflo $s
+            ra=parse_reg(ra); if(ra==0) return(1);
+            rs=rx;
+            mem[curradd]=rtype_inst(rs,0,0,0,0x13); //MTLO
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
         }
 // mult -----------------------------------------------------------
         if(strncmp(&newline[ra],"mult ",5)==0)
@@ -779,13 +861,25 @@ int assemble ( void )
         {
             printf("div/mult/mfhi/mflo not supported\n");
         }
+// nor -----------------------------------------------------------
+        if(strncmp(&newline[ra],"nor ",4)==0)
+        {
+            ra+=4;
+            //nor $d,$s,$t
+            ra=parse_three_regs(ra); if(ra==0) return(1);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x27); //NOR
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
+        }
 // or -----------------------------------------------------------
         if(strncmp(&newline[ra],"or ",3)==0)
         {
             ra+=3;
             //or $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x25);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x25); //OR
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -797,7 +891,7 @@ int assemble ( void )
             ra+=4;
             //ori $t,$s,imm
             ra=parse_two_immed(ra); if(ra==0) return(1);
-            mem[curradd]=(0x0D<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x0D,rs,rt,immed); //ORI
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -809,7 +903,7 @@ int assemble ( void )
             ra+=4;
             //sll $d,$t,shamt
             ra=parse_two_shift(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(0<<21)|(rt<<16)|(rd<<11)|((rs&0x1F)<<6)|(0x00);
+            mem[curradd]=rtype_inst(0,rt,rd,rshift,0x00); //SLL
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -821,7 +915,7 @@ int assemble ( void )
             ra+=5;
             //sllv $d,$t,$s
             ra=parse_three_shift(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x04);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x04); //SLLV
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -833,7 +927,7 @@ int assemble ( void )
             ra+=4;
             //slt $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x2A);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x2A); //SLT
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -845,7 +939,7 @@ int assemble ( void )
             ra+=5;
             //slti $t,$s,imm
             ra=parse_two_immed(ra); if(ra==0) return(1);
-            mem[curradd]=(0x0A<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x0A,rs,rt,immed); //SLTI
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -857,7 +951,7 @@ int assemble ( void )
             ra+=6;
             //sltiu $t,$s,imm
             ra=parse_two_immed(ra); if(ra==0) return(1);
-            mem[curradd]=(0x0B<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x0B,rs,rt,immed); //SLTIU
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -869,7 +963,7 @@ int assemble ( void )
             ra+=5;
             //sltu $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x02B);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x2B); //SLTU
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -881,7 +975,7 @@ int assemble ( void )
             ra+=4;
             //sra $d,$t,shamt
             ra=parse_two_shift(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(0<<21)|(rt<<16)|(rd<<11)|((rs&0x1F)<<6)|(0x03);
+            mem[curradd]=rtype_inst(0,rt,rd,rshift,0x03); //SRA
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -893,7 +987,7 @@ int assemble ( void )
             ra+=5;
             //srav $d,$t,$s
             ra=parse_three_shift(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x07);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x07); //SRAV
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -905,7 +999,7 @@ int assemble ( void )
             ra+=4;
             //srl $d,$t,shamt
             ra=parse_two_shift(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(0<<21)|(rt<<16)|(rd<<11)|((rs&0x1F)<<6)|(0x02);
+            mem[curradd]=rtype_inst(0,rt,rd,rshift,0x02); //SRL
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -917,7 +1011,7 @@ int assemble ( void )
             ra+=5;
             //srlv $d,$t,$s
             ra=parse_three_shift(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x06);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x06); //SRLV
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -929,7 +1023,7 @@ int assemble ( void )
             ra+=4;
             //sub $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x22);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x22); //SUB
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -941,7 +1035,7 @@ int assemble ( void )
             ra+=5;
             //subu $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x23);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x23); //SUBU
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -959,11 +1053,11 @@ int assemble ( void )
             {
                 printf("<%u> adding instruction\n",line);
                 //            0011 11ss
-                mem[curradd]=(0x0F<<26)|(rt<<16)|(0x0000);
-                mark[curradd]|=0x80000000;
+                mem[curradd]=itype_inst(0x0F,0,rt,0x0000); //LUI
+                mark[curradd]|=0x80000001;
                 curradd++;
                 //            1010 11ss
-                mem[curradd]=(0x2B<<26)|(rt<<21)|(rt<<16)|(0x0000);
+                mem[curradd]=itype_inst(0x2B,rt,rt,0x0000); //SW
                 mark[curradd]|=0x80000000;
                 curradd++;
                 continue;
@@ -971,11 +1065,22 @@ int assemble ( void )
             if(is_const)
             {
                 //            1010 11ss
-                mem[curradd]=(0x2B<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+                mem[curradd]=itype_inst(0x2B,rs,rt,rd); //SW
                 mark[curradd]|=0x80000000;
                 curradd++;
                 continue;
             }
+        }
+// syscall -----------------------------------------------------------
+        if(strncmp(&newline[ra],"syscall ",8)==0)
+        {
+            ra+=8;
+            //syscall
+            mem[curradd]=rtype_inst(0,0,0,0,0x0C); //SYSCALL
+            mark[curradd]|=0x80000000;
+            curradd++;
+            if(rest_of_line(ra)) return(1);
+            continue;
         }
 // xor -----------------------------------------------------------
         if(strncmp(&newline[ra],"xor ",4)==0)
@@ -983,7 +1088,7 @@ int assemble ( void )
             ra+=4;
             //xor $d,$s,$t
             ra=parse_three_regs(ra); if(ra==0) return(1);
-            mem[curradd]=(0x00<<26)|(rs<<21)|(rt<<16)|(rd<<11)|(0x00<<6)|(0x26);
+            mem[curradd]=rtype_inst(rs,rt,rd,0,0x26); //OR
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
@@ -995,7 +1100,7 @@ int assemble ( void )
             ra+=5;
             //xori $t,$s,imm
             ra=parse_two_immed(ra); if(ra==0) return(1);
-            mem[curradd]=(0x0E<<26)|(rs<<21)|(rt<<16)|(rd&0xFFFF);
+            mem[curradd]=itype_inst(0x0E,rs,rt,immed); //XORI
             mark[curradd]|=0x80000000;
             curradd++;
             if(rest_of_line(ra)) return(1);
