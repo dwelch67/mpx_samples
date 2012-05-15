@@ -389,7 +389,23 @@ unsigned int rtype_inst (unsigned int rs, unsigned int rt, unsigned int rd, unsi
 //-------------------------------------------------------------------
 unsigned int itype_inst (unsigned int opcode, unsigned int rs, unsigned int rt, unsigned int immed )
 {
-    return((0x00<<26)|((rs&0x1F)<<21)|((rt&0x1F)<<16)|(immed&0xFFFF));
+    return(((opcode&0x3F)<<26)|((rs&0x1F)<<21)|((rt&0x1F)<<16)|(immed&0xFFFF));
+}
+//-------------------------------------------------------------------
+unsigned int jtype_inst (unsigned int opcode, unsigned int address )
+{
+    return(((opcode&0x3F)<<26)|((immed>0x03FFFFFF)>>2));
+}
+//-------------------------------------------------------------------
+unsigned int check_branch_shadow ( unsigned int curradd)
+{
+    if(curradd==0) return(0);
+    if((mark[curradd-1]&0x80000002)==0x80000002)
+    {
+        printf("<%u> Error, 2 word pseudo instruction in branch delay slot\n",line);
+        return(1);
+    }
+    return(0);
 }
 //-------------------------------------------------------------------
 //-------------------------------------------------------------------
@@ -576,7 +592,7 @@ int assemble ( void )
             ra=parse_two_label(ra); if(ra==0) return(1);
             //            0001 00ss
             mem[curradd]=itype_inst(0x04,rs,rt,rd); //BEQ
-            mark[curradd]|=0x80000000;
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -615,7 +631,7 @@ int assemble ( void )
             ra=parse_one_label(ra); if(ra==0) return(1);
             //            0001 11ss
             mem[curradd]=itype_inst(0x07,rs,0x00,rd); //BGTZ
-            mark[curradd]|=0x80000000;
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -628,7 +644,7 @@ int assemble ( void )
             ra=parse_one_label(ra); if(ra==0) return(1);
             //            0001 10ss
             mem[curradd]=itype_inst(0x06,rs,0x00,rd); //BLEZ
-            mark[curradd]|=0x80000000;
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -667,7 +683,7 @@ int assemble ( void )
             ra=parse_two_label(ra); if(ra==0) return(1);
             //            0001 01ss
             mem[curradd]=itype_inst(0x05,rs,rt,rd); //BNE
-            mark[curradd]|=0x80000000;
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -690,15 +706,9 @@ int assemble ( void )
             //j 0x1234
             //j 123
             ra=parse_branch_label(ra); if(ra==0) return(1);
-            rt=rx&0x0FFFFFFC;
-            if(rt!=rx)
-            {
-                printf("<%u> Error: warning constant too big\n",line);
-                return(1);
-            }
             //            0000 10tt
-            mem[curradd]=(0x02<<26)|(rt>>2);
-            mark[curradd]|=0x80000000;
+            mem[curradd]=jtype_inst(2,rx);
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -711,15 +721,9 @@ int assemble ( void )
             //jal 0x1234
             //jal 123
             ra=parse_branch_label(ra); if(ra==0) return(1);
-            rt=rx&0x0FFFFFFC;
-            if(rt!=rx)
-            {
-                printf("<%u> Error: warning constant too big\n",line);
-                return(1);
-            }
             //            0000 11tt
-            mem[curradd]=(0x03<<26)|(rt>>2);
-            mark[curradd]|=0x80000000;
+            mem[curradd]=jtype_inst(3,rx);
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -780,6 +784,7 @@ int assemble ( void )
             if(is_label)
             {
                 printf("<%u> adding instruction\n",line);
+                if(check_branch_shadow(curradd)) return(1);
                 //            0011 11tt
                 mem[curradd]=itype_inst(0x0F,0,rt,0x0000); //LUI
                 mark[curradd]|=0x80000001;
@@ -1052,6 +1057,7 @@ int assemble ( void )
             if(is_label)
             {
                 printf("<%u> adding instruction\n",line);
+                if(check_branch_shadow(curradd)) return(1);
                 //            0011 11ss
                 mem[curradd]=itype_inst(0x0F,0,rt,0x0000); //LUI
                 mark[curradd]|=0x80000001;
@@ -1119,8 +1125,8 @@ int assemble ( void )
             printf("<%u> b label, is an alias for beq $0,$0,label\n",line);
             ra=parse_branch_label(ra); if(ra==0) return(1);
             //            0001 00ss beq
-            mem[curradd]=(0x04<<26)|(0<<21)|(0<<16)|(rx&0xFFFF);
-            mark[curradd]|=0x80000000;
+            mem[curradd]=itype_inst(0x04,0,0,rd); //BEQ
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -1135,8 +1141,8 @@ int assemble ( void )
             printf("<%u> bal label, is an alias for bgezal $0,label\n",line);
             ra=parse_branch_label(ra); if(ra==0) return(1);
             //            0000 01ss bgezal
-            mem[curradd]=(0x01<<26)|(0<<21)|(0x11<<16)|(rx&0xFFFF);
-            mark[curradd]|=0x80000000;
+            mem[curradd]=itype_inst(0x01,0,0x11,rd); //BGEZAL
+            mark[curradd]|=0x80000002;
             curradd++;
             if(rest_of_line(ra)) return(1);
             continue;
@@ -1155,9 +1161,10 @@ int assemble ( void )
             {
                 printf("<%u> la $t,label is an alias for lui $t,address[31:16]; ori $t,$t,address[15:0]\n",line);
                 printf("<%u> adding an instruction\n",line);
+                if(check_branch_shadow(curradd)) return(1);
                 //           0011 11ss
                 mem[curradd]=(0x0F<<26)|(0<<21)|(rt<<16)|((rx>>16)&0xFFFF);
-                mark[curradd]|=0x80000000;
+                mark[curradd]|=0x80000001;
                 curradd++;
                 //           0011 01ss
                 mem[curradd]=(0x0D<<26)|(rt<<21)|(rt<<16)|(rx&0xFFFF);
@@ -1179,12 +1186,13 @@ int assemble ( void )
             {
                 printf("<%u> li $t,imm is an alias for lui $t,imm[31:16]; ori $t,$t,imm[15:0]\n",line);
                 printf("<%u> adding an instruction\n",line);
+                if(check_branch_shadow(curradd)) return(1);
                 //           0011 11ss
-                mem[curradd]=(0x0F<<26)|(0<<21)|(rt<<16)|((rx>>16)&0xFFFF);
-                mark[curradd]|=0x80000000;
+                mem[curradd]=itype_inst(0x0F,0,rt,rx>>16); //LUI
+                mark[curradd]|=0x80000001;
                 curradd++;
                 //           0011 01ss
-                mem[curradd]=(0x0D<<26)|(rt<<21)|(rt<<16)|(rx&0xFFFF);
+                mem[curradd]=itype_inst(0x0D,rt,rt,rx); //ORI
                 mark[curradd]|=0x80000000;
                 curradd++;
             }
@@ -1192,7 +1200,7 @@ int assemble ( void )
             {
                 printf("<%u> li $t,imm is an alias for ori $t,$0,imm[15:0]\n",line);
                 //           0011 01ss
-                mem[curradd]=(0x0D<<26)|(0<<21)|(rt<<16)|(rx&0xFFFF);
+                mem[curradd]=itype_inst(0x0D,0,rt,rx); //ORI
                 mark[curradd]|=0x80000000;
                 curradd++;
             }
